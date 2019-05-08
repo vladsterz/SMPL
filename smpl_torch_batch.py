@@ -14,9 +14,9 @@ class SMPLModel(Module):
     self.J_regressor = torch.from_numpy(
       np.array(params['J_regressor'].todense())
     ).type(torch.float64)
-    self.joint_regressor = torch.from_numpy(
-      np.array(params['joint_regressor'].T.todense())
-    ).type(torch.float64)
+    # self.joint_regressor = torch.from_numpy(
+    #   np.array(params['joint_regressor'].T.todense())
+    # ).type(torch.float64)
     self.weights = torch.from_numpy(params['weights']).type(torch.float64)
     self.posedirs = torch.from_numpy(params['posedirs']).type(torch.float64)
     self.v_template = torch.from_numpy(params['v_template']).type(torch.float64)
@@ -24,7 +24,8 @@ class SMPLModel(Module):
     self.kintree_table = params['kintree_table']
     self.faces = params['f']
     self.device = device if device is not None else torch.device('cpu')
-    for name in ['J_regressor', 'joint_regressor', 'weights', 'posedirs', 'v_template', 'shapedirs']:
+    #for name in ['J_regressor', 'joint_regressor', 'weights', 'posedirs', 'v_template', 'shapedirs']:
+    for name in ['J_regressor', 'weights', 'posedirs', 'v_template', 'shapedirs']:
       _tensor = getattr(self, name)
       print(' Tensor {} shape: '.format(name), _tensor.shape)
       setattr(self, name, _tensor.to(device))

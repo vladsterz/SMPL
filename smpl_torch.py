@@ -125,12 +125,19 @@ class SMPLModel(Module):
     """
     id_to_col = {self.kintree_table[1, i]: i
                  for i in range(self.kintree_table.shape[1])}
+    #find parent joints
     parent = {
       i: id_to_col[self.kintree_table[0, i]]
       for i in range(1, self.kintree_table.shape[1])
     }
+
+    #eq.8 in the original paper
     v_shaped = torch.tensordot(self.shapedirs, betas, dims=([2], [0])) + self.v_template
+
+    #positions of the joints
     J = torch.matmul(self.J_regressor, v_shaped)
+
+    #Rotation matrices for every joint
     R_cube_big = self.rodrigues(pose.view(-1, 1, 3))
 
     if simplify:
@@ -139,9 +146,14 @@ class SMPLModel(Module):
       R_cube = R_cube_big[1:]
       I_cube = (torch.eye(3, dtype=torch.float64).unsqueeze(dim=0) + \
         torch.zeros((R_cube.shape[0], 3, 3), dtype=torch.float64)).to(self.device)
+      #two step of implementation of eq.9 
       lrotmin = torch.reshape(R_cube - I_cube, (-1, 1)).squeeze()
       v_posed = v_shaped + torch.tensordot(self.posedirs, lrotmin, dims=([2], [0]))
 
+    #So far v_posed is T_p at eq.6
+
+    #Now we have to calculate G' of eq.7 (i.e. relative transformations of joints)
+    #For this eq.3 and eq.4 are used
     results = []
     results.append(
       self.with_zeros(torch.cat((R_cube_big[0], torch.reshape(J[0, :], (3, 1))), dim=1))
@@ -159,7 +171,11 @@ class SMPLModel(Module):
         )
       )
 
+    
     stacked = torch.stack(results, dim=0)
+    #Now G is calculated eq.4
+
+
     results = stacked - \
       self.pack(
         torch.matmul(
@@ -170,6 +186,8 @@ class SMPLModel(Module):
           )
         )
       )
+    #Now G' is calculated eq.3
+    
     T = torch.tensordot(self.weights, results, dims=([1], [0]))
     rest_shape_h = torch.cat(
       (v_posed, torch.ones((v_posed.shape[0], 1), dtype=torch.float64).to(self.device)), dim=1
@@ -177,6 +195,7 @@ class SMPLModel(Module):
     v = torch.matmul(T, torch.reshape(rest_shape_h, (-1, 4, 1)))
     v = torch.reshape(v, (-1, 4))[:, :3]
     result = v + torch.reshape(trans, (1, 3))
+    #at last eq.7 is calculated
     return result
 
 
